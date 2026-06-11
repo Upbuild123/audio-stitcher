@@ -120,11 +120,23 @@ def plot_waveform(seg: AudioSegment, speech_start: float, speech_end: float):
 if "episodes" not in st.session_state:
     st.session_state.episodes = {}  # name -> dict
 if "intro_bytes" not in st.session_state:
-    st.session_state.intro_bytes = None
-    st.session_state.intro_name = None
+    default_intro = os.path.join("assets", "intro.wav")
+    if os.path.exists(default_intro):
+        with open(default_intro, "rb") as f:
+            st.session_state.intro_bytes = f.read()
+        st.session_state.intro_name = "intro.wav"
+    else:
+        st.session_state.intro_bytes = None
+        st.session_state.intro_name = None
 if "outro_bytes" not in st.session_state:
-    st.session_state.outro_bytes = None
-    st.session_state.outro_name = None
+    default_outro = os.path.join("assets", "outro.wav")
+    if os.path.exists(default_outro):
+        with open(default_outro, "rb") as f:
+            st.session_state.outro_bytes = f.read()
+        st.session_state.outro_name = "outro.wav"
+    else:
+        st.session_state.outro_bytes = None
+        st.session_state.outro_name = None
 
 
 # ---------------------------------------------------------------------------

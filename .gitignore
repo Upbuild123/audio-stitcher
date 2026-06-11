@@ -6,4 +6,5 @@ __pycache__/
 *.wav
 *.m4a
 *.aac
+!assets/*.wav
 .DS_Store
