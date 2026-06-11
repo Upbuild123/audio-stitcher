@@ -8,3 +8,4 @@ __pycache__/
 *.aac
 !assets/*.wav
 .DS_Store
+.claude/
