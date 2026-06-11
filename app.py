@@ -142,9 +142,143 @@ if "outro_bytes" not in st.session_state:
 # ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
-st.title("Batch Podcast Assembler")
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-setup_tab, batch_tab = st.tabs(["1. Setup (Intro/Outro)", "2. Batch Process Episodes"])
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Header band */
+    .pa-header {
+        padding: 1.75rem 2rem;
+        margin: -1rem -1rem 1.5rem -1rem;
+        border-radius: 0 0 18px 18px;
+        background: linear-gradient(135deg, #0F1B33 0%, #14233F 60%, #0F2F2A 100%);
+        border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .pa-header h1 {
+        font-size: 1.9rem;
+        font-weight: 800;
+        margin: 0;
+        color: #F8FAFC;
+        letter-spacing: -0.02em;
+    }
+    .pa-header p {
+        margin: 0.35rem 0 0 0;
+        color: #94A3B8;
+        font-size: 0.95rem;
+    }
+    .pa-badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.15);
+        color: #34D399;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 10px 10px 0 0;
+        padding: 0.5rem 1.25rem;
+        font-weight: 600;
+        color: #94A3B8;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #34D399 !important;
+        background-color: rgba(16, 185, 129, 0.08);
+    }
+
+    /* Buttons */
+    .stButton > button {
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        transition: all 150ms ease-out;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .stButton > button:hover {
+        border-color: #34D399;
+        color: #34D399;
+        transform: translateY(-1px);
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #10B981, #059669);
+        border: none;
+        color: #06120E;
+    }
+    .stButton > button[kind="primary"]:hover {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+        color: #06120E;
+    }
+
+    /* Cards / containers */
+    .pa-card {
+        background: #141C2E;
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 14px;
+        padding: 1.1rem 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+    .pa-card h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748B;
+        font-weight: 700;
+    }
+
+    /* Info / divider polish */
+    .stAlert {
+        border-radius: 12px;
+    }
+    hr {
+        border-color: rgba(148, 163, 184, 0.12);
+    }
+
+    /* Metric-style badges */
+    .pa-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .pa-stat .value {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #F8FAFC;
+    }
+    .pa-stat .label {
+        font-size: 0.75rem;
+        color: #64748B;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+    }
+    </style>
+
+    <div class="pa-header">
+        <span class="pa-badge">Batch Audio Pipeline</span>
+        <h1>Podcast Batch Assembler</h1>
+        <p>Stitch intro, episode, and outro audio with frame-accurate timing,
+        loudness normalization, and smooth crossfades — across 170+ episodes at once.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+setup_tab, batch_tab = st.tabs(["1. Setup (Intro / Outro)", "2. Batch Process Episodes"])
 
 with setup_tab:
     st.subheader("Intro and Outro (used for every episode)")
@@ -216,8 +350,28 @@ with batch_tab:
     if not st.session_state.episodes:
         st.info("Upload main episode files to begin.")
     else:
-        st.subheader("Processing table")
         names = list(st.session_state.episodes.keys())
+        done_count = sum(1 for n in names if st.session_state.episodes[n]["status"] == "Done")
+        error_count = sum(1 for n in names if str(st.session_state.episodes[n]["status"]).startswith("Error"))
+        pending_count = len(names) - done_count - error_count
+
+        s1, s2, s3, s4 = st.columns(4)
+        for col, value, label in (
+            (s1, len(names), "Episodes Loaded"),
+            (s2, pending_count, "Pending"),
+            (s3, done_count, "Exported"),
+            (s4, error_count, "Errors"),
+        ):
+            with col:
+                st.markdown(
+                    f"""<div class="pa-card"><div class="pa-stat">
+                        <span class="value">{value}</span>
+                        <span class="label">{label}</span>
+                    </div></div>""",
+                    unsafe_allow_html=True,
+                )
+
+        st.subheader("Processing table")
         table_rows = []
         for name in names:
             ep = st.session_state.episodes[name]
