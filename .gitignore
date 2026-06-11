@@ -1,0 +1,9 @@
+venv/
+output/
+__pycache__/
+*.pyc
+*.mp3
+*.wav
+*.m4a
+*.aac
+.DS_Store

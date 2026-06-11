@@ -1,0 +1,6 @@
+streamlit
+pydub
+pyloudnorm
+numpy
+matplotlib
+soundfile
