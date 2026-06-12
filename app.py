@@ -9,8 +9,7 @@ import os
 import zipfile
 
 import numpy as np
-import matplotlib.pyplot as plt
-import pyloudnorm as pyln
+import pandas as pd
 import streamlit as st
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
@@ -36,19 +35,10 @@ def load_audio(file_bytes: bytes, name: str) -> AudioSegment:
     return seg.set_channels(TARGET_CHANNELS).set_frame_rate(TARGET_FRAME_RATE)
 
 
-def measure_lufs(seg: AudioSegment) -> float:
-    data = np.array(seg.get_array_of_samples()).astype(np.float64)
-    data = data.reshape((-1, seg.channels))
-    data /= float(1 << (8 * seg.sample_width - 1))
-    meter = pyln.Meter(seg.frame_rate)
-    return meter.integrated_loudness(data)
-
-
-def normalize_loudness(seg: AudioSegment, target_lufs: float) -> AudioSegment:
-    loudness = measure_lufs(seg)
-    if loudness == float("-inf"):
+def normalize_loudness(seg: AudioSegment, target_dbfs: float) -> AudioSegment:
+    if seg.dBFS == float("-inf"):
         return seg
-    gain = target_lufs - loudness
+    gain = target_dbfs - seg.dBFS
     # clamp extreme gains to avoid blowing up near-silent clips
     gain = max(min(gain, 30.0), -30.0)
     return seg.apply_gain(gain)
@@ -97,22 +87,18 @@ def build_episode(intro: AudioSegment, outro: AudioSegment, main: AudioSegment,
     return canvas, total_dur / 1000.0
 
 
-def plot_waveform(seg: AudioSegment, speech_start: float, speech_end: float):
+def waveform_dataframe(seg: AudioSegment, max_points: int = 1500) -> pd.DataFrame:
     samples = np.array(seg.get_array_of_samples()).astype(np.float32)
     if seg.channels == 2:
         samples = samples.reshape((-1, 2)).mean(axis=1)
-    samples /= float(1 << (8 * seg.sample_width - 1))
-    times = np.linspace(0, len(seg) / 1000.0, num=len(samples))
+    samples = np.abs(samples) / float(1 << (8 * seg.sample_width - 1))
 
-    fig, ax = plt.subplots(figsize=(10, 2.5))
-    ax.plot(times, samples, linewidth=0.5, color="steelblue")
-    ax.axvline(speech_start, color="green", linestyle="--", label="Speech start")
-    ax.axvline(speech_end, color="red", linestyle="--", label="Speech end")
-    ax.set_xlim(0, len(seg) / 1000.0)
-    ax.set_xlabel("Seconds")
-    ax.legend(loc="upper right")
-    fig.tight_layout()
-    return fig
+    if len(samples) > max_points:
+        chunk = len(samples) // max_points
+        samples = samples[: chunk * max_points].reshape(-1, chunk).max(axis=1)
+
+    times = np.linspace(0, len(seg) / 1000.0, num=len(samples))
+    return pd.DataFrame({"amplitude": samples}, index=times)
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +292,7 @@ with setup_tab:
     st.subheader("Processing settings")
     c1, c2, c3 = st.columns(3)
     with c1:
-        target_lufs = st.number_input("Target loudness (LUFS)", value=-16.0, step=0.5)
+        target_lufs = st.number_input("Target loudness (dBFS)", value=-16.0, step=0.5)
     with c2:
         crossfade_ms = st.number_input("Crossfade duration (ms)", value=100, min_value=0, max_value=2000, step=50)
     with c3:
@@ -404,7 +390,7 @@ with batch_tab:
             },
             hide_index=True,
             key="episode_table",
-            use_container_width=True,
+            width="stretch",
         )
 
         # write back manual edits to session state
@@ -433,7 +419,8 @@ with batch_tab:
             ep["speech_start"] = new_start
             ep["speech_end"] = new_end
 
-            st.pyplot(plot_waveform(seg, new_start, new_end))
+            st.line_chart(waveform_dataframe(seg), height=180)
+            st.caption(f"Speech start: {new_start:.2f}s · Speech end: {new_end:.2f}s")
 
             if not st.session_state.intro_bytes or not st.session_state.outro_bytes:
                 st.error("Please upload an Intro and Outro file in the Setup tab first.")
