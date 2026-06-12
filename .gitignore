@@ -7,5 +7,6 @@ __pycache__/
 *.m4a
 *.aac
 !assets/*.wav
+!assets/*.mp3
 .DS_Store
 .claude/

@@ -123,20 +123,20 @@ if "episodes" not in st.session_state:
 if "export_zip" not in st.session_state:
     st.session_state.export_zip = None
 if "intro_bytes" not in st.session_state:
-    default_intro = os.path.join("assets", "intro.wav")
+    default_intro = os.path.join("assets", "intro.mp3")
     if os.path.exists(default_intro):
         with open(default_intro, "rb") as f:
             st.session_state.intro_bytes = f.read()
-        st.session_state.intro_name = "intro.wav"
+        st.session_state.intro_name = "intro.mp3"
     else:
         st.session_state.intro_bytes = None
         st.session_state.intro_name = None
 if "outro_bytes" not in st.session_state:
-    default_outro = os.path.join("assets", "outro.wav")
+    default_outro = os.path.join("assets", "outro.mp3")
     if os.path.exists(default_outro):
         with open(default_outro, "rb") as f:
             st.session_state.outro_bytes = f.read()
-        st.session_state.outro_name = "outro.wav"
+        st.session_state.outro_name = "outro.mp3"
     else:
         st.session_state.outro_bytes = None
         st.session_state.outro_name = None
