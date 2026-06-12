@@ -14,6 +14,14 @@ import streamlit as st
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
+try:
+    import static_ffmpeg
+    _ffmpeg_path, _ffprobe_path = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise()
+    AudioSegment.converter = _ffmpeg_path
+    AudioSegment.ffprobe = _ffprobe_path
+except Exception:
+    pass
+
 # ---------------------------------------------------------------------------
 # Constants (timing rules)
 # ---------------------------------------------------------------------------
