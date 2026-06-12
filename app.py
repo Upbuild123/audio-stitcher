@@ -15,8 +15,11 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 import static_ffmpeg
-static_ffmpeg.add_paths()
-_ffmpeg_path, _ffprobe_path = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise()
+
+_ffmpeg_dir = os.path.join(os.path.expanduser("~"), ".cache", "static_ffmpeg")
+os.makedirs(_ffmpeg_dir, exist_ok=True)
+_ffmpeg_path, _ffprobe_path = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise(download_dir=_ffmpeg_dir)
+os.environ["PATH"] = os.path.dirname(_ffmpeg_path) + os.pathsep + os.environ.get("PATH", "")
 AudioSegment.converter = _ffmpeg_path
 AudioSegment.ffmpeg = _ffmpeg_path
 AudioSegment.ffprobe = _ffprobe_path
