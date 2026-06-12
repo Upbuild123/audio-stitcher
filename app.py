@@ -6,6 +6,7 @@ timing, loudness normalization, and optional crossfades.
 
 import io
 import os
+import zipfile
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -119,6 +120,8 @@ def plot_waveform(seg: AudioSegment, speech_start: float, speech_end: float):
 # ---------------------------------------------------------------------------
 if "episodes" not in st.session_state:
     st.session_state.episodes = {}  # name -> dict
+if "export_zip" not in st.session_state:
+    st.session_state.export_zip = None
 if "intro_bytes" not in st.session_state:
     default_intro = os.path.join("assets", "intro.wav")
     if os.path.exists(default_intro):
@@ -447,29 +450,45 @@ with batch_tab:
                 progress = st.progress(0)
                 status_area = st.empty()
                 total = len(names)
+                zip_buffer = io.BytesIO()
 
-                for i, name in enumerate(names):
-                    ep = st.session_state.episodes[name]
-                    status_area.text(f"Processing {name} ({i+1}/{total})...")
-                    try:
-                        main_seg = load_audio(ep["bytes"], name)
-                        result, final_dur = build_episode(
-                            intro_seg, outro_seg, main_seg,
-                            ep["speech_start"], ep["speech_end"],
-                            crossfade_ms, target_lufs,
-                        )
-                        base = os.path.splitext(name)[0]
-                        out_path = os.path.join(OUTPUT_DIR, f"{base}.{export_format}")
-                        if export_format == "mp3":
-                            result.export(out_path, format="mp3", bitrate="192k")
-                        else:
-                            result.export(out_path, format="wav")
-                        ep["status"] = "Done"
-                        ep["final_duration"] = round(final_dur, 2)
-                    except Exception as exc:
-                        ep["status"] = f"Error: {exc}"
-                    progress.progress((i + 1) / total)
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for i, name in enumerate(names):
+                        ep = st.session_state.episodes[name]
+                        status_area.text(f"Processing {name} ({i+1}/{total})...")
+                        try:
+                            main_seg = load_audio(ep["bytes"], name)
+                            result, final_dur = build_episode(
+                                intro_seg, outro_seg, main_seg,
+                                ep["speech_start"], ep["speech_end"],
+                                crossfade_ms, target_lufs,
+                            )
+                            base = os.path.splitext(name)[0]
+                            out_name = f"{base}.{export_format}"
+                            out_path = os.path.join(OUTPUT_DIR, out_name)
+                            export_kwargs = {"format": "mp3", "bitrate": "192k"} if export_format == "mp3" else {"format": "wav"}
+                            result.export(out_path, **export_kwargs)
+
+                            file_buf = io.BytesIO()
+                            result.export(file_buf, **export_kwargs)
+                            zf.writestr(out_name, file_buf.getvalue())
+
+                            ep["status"] = "Done"
+                            ep["final_duration"] = round(final_dur, 2)
+                        except Exception as exc:
+                            ep["status"] = f"Error: {exc}"
+                        progress.progress((i + 1) / total)
 
                 status_area.text("Batch processing complete.")
-                st.success(f"Exported {total} episodes to ./{OUTPUT_DIR}/")
+                st.session_state.export_zip = zip_buffer.getvalue()
+                st.session_state.export_zip_format = export_format
+                st.success(f"Exported {total} episodes.")
                 st.rerun()
+
+        if st.session_state.get("export_zip"):
+            st.download_button(
+                "Download all episodes (.zip)",
+                data=st.session_state.export_zip,
+                file_name=f"episodes_{st.session_state.export_zip_format}.zip",
+                mime="application/zip",
+            )
