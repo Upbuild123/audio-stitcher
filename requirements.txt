@@ -1,6 +1,6 @@
 streamlit
 pydub
-static-ffmpeg
+imageio-ffmpeg
 audioop-lts; python_version >= "3.13"
 numpy
 pandas

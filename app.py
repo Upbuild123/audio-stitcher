@@ -14,15 +14,19 @@ import streamlit as st
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-import static_ffmpeg
+import imageio_ffmpeg
 
-_ffmpeg_dir = os.path.join(os.path.expanduser("~"), ".cache", "static_ffmpeg")
-os.makedirs(_ffmpeg_dir, exist_ok=True)
-_ffmpeg_path, _ffprobe_path = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise(download_dir=_ffmpeg_dir)
-os.environ["PATH"] = os.path.dirname(_ffmpeg_path) + os.pathsep + os.environ.get("PATH", "")
-AudioSegment.converter = _ffmpeg_path
-AudioSegment.ffmpeg = _ffmpeg_path
-AudioSegment.ffprobe = _ffprobe_path
+AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
+
+# Maps file extensions to an explicit ffmpeg decoder codec. Passing a codec
+# to AudioSegment.from_file skips pydub's ffprobe-based mediainfo lookup,
+# so no ffprobe binary is required at all.
+_DECODER_CODECS = {
+    "mp3": "mp3",
+    "m4a": "aac",
+    "aac": "aac",
+    "wav": "pcm_s16le",
+}
 
 # ---------------------------------------------------------------------------
 # Constants (timing rules)
@@ -41,7 +45,8 @@ st.set_page_config(page_title="Podcast Batch Assembler", layout="wide")
 # ---------------------------------------------------------------------------
 def load_audio(file_bytes: bytes, name: str) -> AudioSegment:
     ext = os.path.splitext(name)[1].lstrip(".").lower() or "mp3"
-    seg = AudioSegment.from_file(io.BytesIO(file_bytes), format=ext)
+    codec = _DECODER_CODECS.get(ext)
+    seg = AudioSegment.from_file(io.BytesIO(file_bytes), format=ext, codec=codec)
     return seg.set_channels(TARGET_CHANNELS).set_frame_rate(TARGET_FRAME_RATE)
 
 
