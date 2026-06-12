@@ -434,7 +434,24 @@ with batch_tab:
             ep["speech_end"] = new_end
 
             st.pyplot(plot_waveform(seg, new_start, new_end))
+            st.caption("Raw main episode file:")
             st.audio(ep["bytes"])
+
+            if st.button("Build full preview (Intro + Main + Outro)", key=f"preview_{selected}"):
+                if not st.session_state.intro_bytes or not st.session_state.outro_bytes:
+                    st.error("Please upload an Intro and Outro file in the Setup tab first.")
+                else:
+                    intro_seg = load_audio(st.session_state.intro_bytes, st.session_state.intro_name)
+                    outro_seg = load_audio(st.session_state.outro_bytes, st.session_state.outro_name)
+                    preview_seg, preview_dur = build_episode(
+                        intro_seg, outro_seg, seg,
+                        new_start, new_end,
+                        crossfade_ms, target_lufs,
+                    )
+                    buf = io.BytesIO()
+                    preview_seg.export(buf, format="mp3", bitrate="192k")
+                    st.caption(f"Full assembled preview ({preview_dur:.1f}s):")
+                    st.audio(buf.getvalue(), format="audio/mp3")
 
         st.divider()
         st.subheader("Export")
