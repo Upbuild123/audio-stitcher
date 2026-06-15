@@ -32,7 +32,7 @@ _DECODER_CODECS = {
 # Constants (timing rules)
 # ---------------------------------------------------------------------------
 MAIN_START_OFFSET_MS = 62_500  # 1:02.5 - where main speech must land
-OUTRO_OVERLAP_MS = 27_400      # speech must end 27.4s into outro
+OUTRO_OVERLAP_MS = 22_900      # speech must end 22.9s into outro
 TARGET_FRAME_RATE = 44100
 TARGET_CHANNELS = 2
 OUTPUT_DIR = "output"
