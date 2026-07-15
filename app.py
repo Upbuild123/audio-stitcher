@@ -80,13 +80,13 @@ def detect_speech_bounds(seg: AudioSegment, min_silence_len: int, silence_thresh
 
 def build_episode(intro: AudioSegment, outro: AudioSegment, main: AudioSegment,
                    speech_start: float, speech_end: float,
-                   crossfade_ms: int, target_lufs: float):
+                   crossfade_ms: int, target_lufs: float, speech_tail_ms: int = 1500):
     # Intro/outro are pre-mastered to the target level already - leave them as-is.
     intro_n = intro
     outro_n = outro
 
     start_ms = max(0, int(speech_start * 1000))
-    end_ms = max(start_ms + 1, int(speech_end * 1000))
+    end_ms = min(len(main), max(start_ms + 1, int(speech_end * 1000) + speech_tail_ms))
     trimmed_main = main[start_ms:end_ms]
     main_n = normalize_loudness(trimmed_main, target_lufs)
 
@@ -315,7 +315,7 @@ with setup_tab:
             st.caption(f"Loaded: {st.session_state.outro_name}")
 
     st.subheader("Processing settings")
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         target_lufs = st.number_input(
             "Main episode target level (dBFS, approx. -16 LUFS)", value=-16.0, step=0.5,
@@ -325,6 +325,11 @@ with setup_tab:
     with c2:
         crossfade_ms = st.number_input("Crossfade duration (ms)", value=100, min_value=0, max_value=2000, step=50)
     with c3:
+        speech_tail_ms = st.number_input(
+            "Tail buffer after speech end (ms)", value=1500, min_value=0, max_value=5000, step=100,
+            help="Extra audio kept after detected speech end before outro starts, to avoid clipping the last word."
+        )
+    with c4:
         export_format = st.selectbox("Export format", ["mp3", "wav"], index=0)
 
     st.subheader("Speech detection settings")
@@ -461,7 +466,7 @@ with batch_tab:
                 preview_seg, preview_dur = build_episode(
                     intro_seg, outro_seg, seg,
                     new_start, new_end,
-                    crossfade_ms, target_lufs,
+                    crossfade_ms, target_lufs, int(speech_tail_ms),
                 )
                 buf = io.BytesIO()
                 preview_seg.export(buf, format="mp3", bitrate="192k")
@@ -493,7 +498,7 @@ with batch_tab:
                             result, final_dur = build_episode(
                                 intro_seg, outro_seg, main_seg,
                                 ep["speech_start"], ep["speech_end"],
-                                crossfade_ms, target_lufs,
+                                crossfade_ms, target_lufs, int(speech_tail_ms),
                             )
                             base = os.path.splitext(name)[0]
                             out_name = f"{base}.{export_format}"
